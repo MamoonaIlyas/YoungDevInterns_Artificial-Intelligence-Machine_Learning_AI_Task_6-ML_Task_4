@@ -1,0 +1,40 @@
+import pandas as pd
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import StratifiedKFold, cross_val_score, cross_validate
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import make_scorer, accuracy_score, precision_score, recall_score, f1_score
+
+# Load dataset
+df = pd.read_csv(r'D:\studies\Mamoona\AI&ML_Intern\preprocessed_cereal.csv')
+
+# Step 1: Create classification target from rating
+bins = [0, 40, 70, 100]
+labels = ['Low', 'Medium', 'High']
+df['rating_class'] = pd.cut(df['rating'], bins=bins, labels=labels)
+df.drop(columns='rating', inplace=True)
+
+# Step 2: Prepare features and encoded labels
+X = df.drop(columns='rating_class')
+y = df['rating_class']
+le = LabelEncoder()
+y_encoded = le.fit_transform(y)  # Low=0, Medium=1, High=2
+
+# Step 3: Define the model
+model = LogisticRegression(max_iter=1000)
+
+# Step 4: Define scoring metrics
+scoring = {
+    'accuracy': make_scorer(accuracy_score),
+    'precision_macro': make_scorer(precision_score, average='macro', zero_division=0),
+    'recall_macro': make_scorer(recall_score, average='macro', zero_division=0),
+    'f1_macro': make_scorer(f1_score, average='macro', zero_division=0)
+}
+
+# Step 5: K-Fold Cross-Validation
+kfold = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+results = cross_validate(model, X, y_encoded, cv=kfold, scoring=scoring)
+
+# Step 6: Display Results
+print("=== Cross-Validation Results (5-Fold) ===")
+for metric in scoring.keys():
+    print(f"{metric}: {results['test_' + metric].mean():.4f} (+/- {results['test_' + metric].std():.4f})")
